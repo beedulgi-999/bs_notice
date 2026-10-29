@@ -100,7 +100,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Firebase 설정
         const firebaseConfig = {
             apiKey: "AIzaSyCJPuGeyVJ7AdZvflhCwM_MCFsI7Dnp35c",
             authDomain: "bs-nt-af44b.firebaseapp.com",
@@ -118,8 +117,8 @@
         let currentUser = null;
         let isStaff = false;
         let allNotices = [];
+        let isLoggingIn = false; // 중복 로그인 방지 플래그
 
-        // DOM 요소
         const loginNotice = document.getElementById('login-notice');
         const mainContent = document.getElementById('main-content');
         const authSection = document.getElementById('auth-section');
@@ -128,20 +127,31 @@
         const staffOptions = document.getElementById('staff-options');
         const pinModal = document.getElementById('pin-modal');
         const searchInput = document.getElementById('search-input');
+        const btnLogin = document.getElementById('btn-login');
 
-        // 구글 로그인 (팝업 방식 사용하여 방화벽 타임아웃 방지)
-        document.getElementById('btn-login').addEventListener('click', async () => {
+        // 안전한 구글 팝업 로그인
+        btnLogin.addEventListener('click', async () => {
+            if (isLoggingIn) return;
+            isLoggingIn = true;
+            btnLogin.disabled = true;
+            btnLogin.opacity = "0.6";
+
             try {
                 await signInWithPopup(auth, provider);
             } catch (err) {
-                alert("로그인 중 에러가 발생했습니다: " + err.message);
+                if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+                    alert("로그인 중 에러가 발생했습니다: " + err.message);
+                }
+            } finally {
+                isLoggingIn = false;
+                btnLogin.disabled = false;
+                btnLogin.opacity = "1";
             }
         });
 
-        // 인증 상태 감시
+        // 인증 상태 변경 감지
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // @buseol.kr 도메인 검사
                 if (!user.email.endsWith('@buseol.kr')) {
                     alert("부설고 학교 계정(@buseol.kr)으로만 접속할 수 있습니다.");
                     signOut(auth);
@@ -156,7 +166,6 @@
             }
         });
 
-        // UI 제어 함수들
         function showLoggedInUI() {
             loginNotice.classList.add('hidden');
             mainContent.classList.remove('hidden');
@@ -174,7 +183,7 @@
             authSection.innerHTML = '';
         }
 
-        // 비밀번호(6939) 기반 교직원 모드 전환
+        // 비밀번호(6939) 교직원 인증
         btnSwitchRole.addEventListener('click', () => {
             if (isStaff) {
                 isStaff = false;
@@ -223,7 +232,7 @@
             renderNotices();
         }
 
-        // 공지 작성
+        // 공지 등록
         document.getElementById('btn-submit').addEventListener('click', async () => {
             const title = document.getElementById('notice-title').value.trim();
             const content = document.getElementById('notice-content').value.trim();
@@ -252,7 +261,7 @@
             }
         });
 
-        // 실시간 공지 불러오기
+        // 실시간 로딩
         function loadNotices() {
             const q = query(collection(db, 'notices'), orderBy('createdAt', 'desc'));
             onSnapshot(q, (snapshot) => {
@@ -264,7 +273,6 @@
             });
         }
 
-        // 검색 및 공지 목록 렌더링
         searchInput.addEventListener('input', renderNotices);
 
         function renderNotices() {
@@ -286,9 +294,8 @@
 
             filtered.forEach(item => {
                 const isMyPost = currentUser && item.authorUid === currentUser.uid;
-                const canDelete = isStaff || isMyPost; // 교직원이거나 본인 글인 경우만 삭제 가능
+                const canDelete = isStaff || isMyPost;
 
-                // 날짜 포맷
                 let dateStr = '방금 전';
                 if (item.createdAt) {
                     const date = item.createdAt.toDate();
@@ -325,7 +332,6 @@
                 noticeList.appendChild(card);
             });
 
-            // 삭제 이벤트 바인딩
             document.querySelectorAll('.btn-delete').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.dataset.id;

@@ -56,15 +56,24 @@
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">학교 공지사항 및 분실물 센터 실시간 확인 서비스</p>
                 </div>
 
-                <div class="pt-4">
-                    <button @click="loginWithGoogle" class="w-full py-3.5 px-4 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 rounded-2xl font-semibold text-sm text-slate-700 dark:text-slate-200 shadow-sm flex items-center justify-center gap-3 transition">
+                <div v-if="loginError" class="p-3 bg-red-100 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-300 text-xs text-left">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ loginError }}
+                </div>
+
+                <div class="pt-2 space-y-2">
+                    <button @click="loginWithRedirect" :disabled="loggingIn" class="w-full py-3.5 px-4 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 rounded-2xl font-semibold text-sm text-slate-700 dark:text-slate-200 shadow-sm flex items-center justify-center gap-3 transition">
                         <svg class="w-5 h-5" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                         </svg>
-                        <span>Google 계정으로 로그인</span>
+                        <span>Google 계정 로그인 (리디렉션)</span>
+                    </button>
+
+                    <button @click="loginWithPopup" :disabled="loggingIn" class="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-xl font-medium text-xs text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-window-restore"></i>
+                        <span>대체 팝업 로그인 시도</span>
                     </button>
                 </div>
             </div>
@@ -91,7 +100,6 @@
 
                     <!-- 유저 정보 및 제어 버튼 -->
                     <div class="flex items-center gap-2 sm:gap-3">
-                        <!-- 로그인 유저 프로필 -->
                         <div class="hidden md:flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 pr-3 rounded-xl border border-slate-200 dark:border-slate-700">
                             <img :src="user.photoURL || 'https://placehold.co/100x100?text=User'" class="w-7 h-7 rounded-lg object-cover">
                             <div class="text-left leading-tight">
@@ -100,25 +108,22 @@
                             </div>
                         </div>
 
-                        <!-- 교직원/학생 모드 -->
-                        <button @click="isTeacher = !isTeacher" class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all"
-                            :class="isTeacher ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'">
-                            <i :class="isTeacher ? 'fa-solid fa-user-shield text-amber-500' : 'fa-solid fa-graduation-cap text-indigo-500'"></i>
-                            <span>{{ isTeacher ? '교직원 모드' : '학생 모드' }}</span>
+                        <!-- 교직원/학생 모드 스위치 -->
+                        <button @click="handleModeSwitch" class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all shadow-sm"
+                            :class="isTeacher ? 'border-amber-500 bg-amber-500 text-white' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'">
+                            <i :class="isTeacher ? 'fa-solid fa-user-shield' : 'fa-solid fa-graduation-cap text-indigo-500'"></i>
+                            <span>{{ isTeacher ? '교직원 모드 ON' : '학생 모드' }}</span>
                         </button>
 
-                        <!-- 다크 모드 토글 -->
                         <button @click="toggleDarkMode" class="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition">
                             <i :class="isDark ? 'fa-solid fa-sun text-amber-400' : 'fa-solid fa-moon'"></i>
                         </button>
 
-                        <!-- 로그아웃 버튼 -->
                         <button @click="logout" class="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-1.5 hover:bg-red-100 transition">
                             <i class="fa-solid fa-right-from-bracket"></i>
                             <span class="hidden sm:inline">로그아웃</span>
                         </button>
 
-                        <!-- 글쓰기 버튼 -->
                         <button @click="showCreateModal = true" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition">
                             <i class="fa-solid fa-plus"></i>
                             <span class="hidden sm:inline">글쓰기</span>
@@ -128,6 +133,18 @@
             </header>
 
             <main class="max-w-6xl mx-auto px-4 mt-6">
+                <!-- 통합 검색창 및 탭 메뉴 -->
+                <div class="mb-4">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input v-model="searchQuery" type="text" placeholder="공지 제목, 내용, 작성자 이름 검색..." 
+                            class="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none text-sm transition shadow-sm">
+                        <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- 탭 메뉴 -->
                 <div class="flex items-center gap-2 overflow-x-auto pb-2 mb-6 hide-scrollbar border-b border-slate-200 dark:border-slate-800">
                     <button @click="currentTab = 'all'" 
@@ -145,56 +162,101 @@
                     </button>
                 </div>
 
-                <!-- 분실물 안내 문구 -->
                 <div v-if="currentTab === 'lost'" class="mb-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs leading-relaxed">
                     <i class="fa-solid fa-circle-info mr-1"></i>
                     분실물을 발견했거나 잃어버린 물건이 있다면 이 공지방에 올려 주세요. 습득한 분실물은 담당층 학년실에 가져다주시기 바랍니다.
                 </div>
 
-                <!-- 로딩 표시 -->
                 <div v-if="loading" class="text-center py-16">
                     <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
                     <p class="text-xs text-slate-400">Firebase 실시간 데이터 불러오는 중...</p>
                 </div>
 
-                <!-- 데이터 없음 -->
                 <div v-else-if="filteredNotices.length === 0" class="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
                     <p class="text-sm font-bold text-slate-500">등록된 공지사항이 없습니다.</p>
                 </div>
 
-                <!-- 공지 리스트 -->
+                <!-- 공지사항 카드 리스트 -->
                 <div v-else class="space-y-3">
                     <div v-for="notice in filteredNotices" :key="notice.id"
-                        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 shadow-sm transition flex justify-between items-start gap-4">
-                        <div class="space-y-1.5 flex-1">
+                        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border shadow-sm transition flex justify-between items-start gap-4 relative overflow-hidden"
+                        :class="notice.is_important ? 'border-red-500 dark:border-red-500 ring-1 ring-red-500/30 bg-red-50/20 dark:bg-red-950/10' : 'border-slate-200 dark:border-slate-700 hover:border-emerald-500'">
+                        
+                        <!-- 중요 공지 강조 띠 -->
+                        <div v-if="notice.is_important" class="absolute top-0 left-0 bg-red-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-br-xl shadow-sm">
+                            <i class="fa-solid fa-thumbtack mr-1"></i>필독 / 중요
+                        </div>
+
+                        <div class="space-y-1.5 flex-1" :class="{'pt-3': notice.is_important}">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
                                     {{ getRoomName(notice.room_id) }}
                                 </span>
-                                <span v-if="notice.category" class="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                                    {{ notice.category }}
+                                <!-- 작성자 신분 태그 (교직원 / 학생) -->
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                                    :class="notice.author_role === 'teacher' ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'">
+                                    <i :class="notice.author_role === 'teacher' ? 'fa-solid fa-user-shield mr-1' : 'fa-solid fa-graduation-cap mr-1'"></i>
+                                    {{ notice.author_role === 'teacher' ? '교직원' : '학생' }}
                                 </span>
                             </div>
-                            <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">{{ notice.title }}</h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">{{ notice.content }}</p>
+                            <h3 class="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                {{ notice.title }}
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed whitespace-pre-line">{{ notice.content }}</p>
 
-                            <!-- 물건 특징 (분실물인 경우) -->
                             <div v-if="notice.item_features" class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                                 <i class="fa-solid fa-tags"></i>
                                 <span class="font-semibold">물건 특징:</span> {{ notice.item_features }}
                             </div>
                         </div>
-                        <div class="text-right text-xs text-slate-400 whitespace-nowrap">
-                            <div class="font-semibold text-slate-600 dark:text-slate-300">{{ notice.author }}</div>
-                            <div>{{ notice.date }}</div>
+
+                        <div class="text-right text-xs text-slate-400 whitespace-nowrap flex flex-col justify-between items-end h-full gap-3" :class="{'pt-3': notice.is_important}">
+                            <div>
+                                <div class="font-semibold text-slate-600 dark:text-slate-300">{{ notice.author }}</div>
+                                <div class="text-[10px]">{{ notice.date }}</div>
+                            </div>
+
+                            <!-- 삭제 가능한 경우에만 삭제 버튼 노출 -->
+                            <button v-if="canDelete(notice)" @click="deleteNotice(notice.id)" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 rounded-lg text-[11px] font-semibold border border-red-200 dark:border-red-800 transition flex items-center gap-1">
+                                <i class="fa-regular fa-trash-can"></i>
+                                <span>삭제</span>
+                            </button>
                         </div>
                     </div>
                 </div>
             </main>
 
+            <!-- 교직원 비밀번호 인증 모달 -->
+            <div v-if="showPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-sm w-full p-6 space-y-4 border border-slate-200 dark:border-slate-700 shadow-2xl text-center">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl mx-auto">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold">교직원 모드 인증</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">교직원 전용 숫자인증 비밀번호를 입력하세요.</p>
+                    </div>
+                    <div>
+                        <input v-model="passwordInput" type="password" maxlength="6" placeholder="비밀번호 입력" @keyup.enter="verifyTeacherPassword" class="w-full text-center tracking-widest text-lg font-bold p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500 outline-none">
+                        <p v-if="passwordError" class="text-red-500 text-xs font-semibold mt-2">{{ passwordError }}</p>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button @click="showPasswordModal = false" class="w-1/2 py-2.5 rounded-xl text-xs bg-slate-200 dark:bg-slate-700 font-semibold">취소</button>
+                        <button @click="verifyTeacherPassword" class="w-1/2 py-2.5 rounded-xl text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-md shadow-amber-500/30">인증하기</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 새 공지 작성 모달 -->
             <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full p-6 space-y-4 border border-slate-200 dark:border-slate-700">
-                    <h3 class="text-lg font-bold">새 공지 등록</h3>
+                <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full p-6 space-y-4 border border-slate-200 dark:border-slate-700 shadow-2xl">
+                    <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+                        <h3 class="text-base font-bold">새 공지 작성</h3>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="isTeacher ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'">
+                            {{ isTeacher ? '교직원 작성 권한' : '학생 작성 권한' }}
+                        </span>
+                    </div>
+
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="block font-bold mb-1">게시판 선택</label>
@@ -206,20 +268,30 @@
                                 <option value="lost">분실물 공지방</option>
                             </select>
                         </div>
+
+                        <!-- 교직원 전용 중요 설정 체크박스 -->
+                        <div v-if="isTeacher" class="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl flex items-center justify-between">
+                            <label for="important-check" class="font-bold text-red-600 dark:text-red-400 cursor-pointer flex items-center gap-2">
+                                <i class="fa-solid fa-thumbtack"></i>
+                                <span>이 공지를 상단 중요/필독으로 강조하기</span>
+                            </label>
+                            <input id="important-check" v-model="formNotice.isImportant" type="checkbox" class="w-4 h-4 accent-red-600 rounded cursor-pointer">
+                        </div>
+
                         <div>
                             <label class="block font-bold mb-1">제목</label>
                             <input v-model="formNotice.title" type="text" placeholder="제목을 입력하세요" class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                         </div>
                         <div v-if="formNotice.roomId === 'lost'">
-                            <label class="block font-bold mb-1">물건 특징 (색, 브랜드, 모양/종류, 눈에 띄는 특징)</label>
+                            <label class="block font-bold mb-1">물건 특징 (색상, 브랜드, 종류 등)</label>
                             <input v-model="formNotice.itemFeatures" type="text" placeholder="예: 검은색 나이키 패딩, 지퍼에 파란색 키링" class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                         </div>
                         <div>
                             <label class="block font-bold mb-1">내용</label>
-                            <textarea v-model="formNotice.content" rows="4" placeholder="상세 내용을 입력하세요" class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"></textarea>
+                            <textarea v-model="formNotice.content" rows="5" placeholder="상세 내용을 입력하세요" class="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 leading-relaxed"></textarea>
                         </div>
                     </div>
-                    <div class="flex justify-end gap-2 pt-2">
+                    <div class="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
                         <button @click="showCreateModal = false" class="px-4 py-2 rounded-xl text-xs bg-slate-200 dark:bg-slate-700 font-semibold">취소</button>
                         <button @click="submitNewNotice" class="px-4 py-2 rounded-xl text-xs bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/30">등록하기</button>
                     </div>
@@ -230,10 +302,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 사용자님의 Firebase 실제 설정 키 값
         const firebaseConfig = {
             apiKey: "AIzaSyCJPuGeyVJ7AdZvfIhCwM_MCFsl7Dnp35c",
             authDomain: "bs-nt-af44b.firebaseapp.com",
@@ -244,7 +315,6 @@
             measurementId: "G-G8FX36195B"
         };
 
-        // Firebase 초기화
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -256,8 +326,14 @@
                 return {
                     user: null,
                     loading: true,
+                    loggingIn: false,
+                    loginError: '',
+                    searchQuery: '',
                     isDark: false,
                     isTeacher: false,
+                    showPasswordModal: false,
+                    passwordInput: '',
+                    passwordError: '',
                     currentTab: 'all',
                     showCreateModal: false,
 
@@ -274,7 +350,7 @@
                         title: '',
                         content: '',
                         itemFeatures: '',
-                        category: '일반'
+                        isImportant: false
                     },
 
                     notices: []
@@ -283,30 +359,78 @@
 
             computed: {
                 filteredNotices() {
-                    if (this.currentTab === 'all') return this.notices;
-                    return this.notices.filter(n => n.room_id === this.currentTab);
+                    let list = this.notices;
+                    if (this.currentTab !== 'all') {
+                        list = list.filter(n => n.room_id === this.currentTab);
+                    }
+                    if (this.searchQuery.trim()) {
+                        const q = this.searchQuery.trim().toLowerCase();
+                        list = list.filter(n => 
+                            (n.title && n.title.toLowerCase().includes(q)) ||
+                            (n.content && n.content.toLowerCase().includes(q)) ||
+                            (n.author && n.author.toLowerCase().includes(q)) ||
+                            (n.item_features && n.item_features.toLowerCase().includes(q))
+                        );
+                    }
+                    // 중요 표시 공지 상단 정렬
+                    return list.sort((a, b) => (b.is_important ? 1 : 0) - (a.is_important ? 1 : 0));
                 }
             },
 
             mounted() {
+                // 로그인 리디렉션 처리
+                getRedirectResult(auth).then((result) => {
+                    if (result && result.user) {
+                        this.validateAndSetUser(result.user);
+                    }
+                }).catch((error) => {
+                    console.error("리디렉션 수신 실패:", error);
+                    this.loginError = "노트북 네트워크 환경 문제로 리디렉션 로그인이 실패했습니다. 대체 팝업 로그인을 시도해주세요.";
+                });
+
                 onAuthStateChanged(auth, (currentUser) => {
-                    this.user = currentUser;
                     if (currentUser) {
-                        this.subscribeToFirestore();
+                        this.validateAndSetUser(currentUser);
                     } else {
+                        this.user = null;
                         this.loading = false;
                     }
                 });
             },
 
             methods: {
-                async loginWithGoogle() {
+                validateAndSetUser(currentUser) {
+                    if (currentUser && currentUser.email) {
+                        // buseol.kr 도메인 제한 검사
+                        if (!currentUser.email.endsWith('@buseol.kr')) {
+                            this.loginError = "접근 제한: 부설고 학교 계정(@buseol.kr)으로만 로그인할 수 있습니다.";
+                            this.logout();
+                            return;
+                        }
+                    }
+                    this.user = currentUser;
+                    if (currentUser) {
+                        this.subscribeToFirestore();
+                    }
+                },
+
+                loginWithRedirect() {
+                    this.loggingIn = true;
+                    this.loginError = '';
+                    const provider = new GoogleAuthProvider();
+                    signInWithRedirect(auth, provider);
+                },
+
+                async loginWithPopup() {
+                    this.loggingIn = true;
+                    this.loginError = '';
                     const provider = new GoogleAuthProvider();
                     try {
                         await signInWithPopup(auth, provider);
                     } catch (error) {
-                        console.error("로그인 실패:", error);
-                        alert("로그인에 실패했습니다: " + error.message);
+                        console.error("팝업 로그인 오류:", error);
+                        this.loginError = "로그인 실패: " + error.message;
+                        this.loggingIn = false;
                     }
                 },
 
@@ -314,8 +438,28 @@
                     try {
                         await signOut(auth);
                         this.notices = [];
+                        this.isTeacher = false;
                     } catch (error) {
                         console.error("로그아웃 실패:", error);
+                    }
+                },
+
+                handleModeSwitch() {
+                    if (this.isTeacher) {
+                        this.isTeacher = false;
+                    } else {
+                        this.passwordInput = '';
+                        this.passwordError = '';
+                        this.showPasswordModal = true;
+                    }
+                },
+
+                verifyTeacherPassword() {
+                    if (this.passwordInput === '6939') {
+                        this.isTeacher = true;
+                        this.showPasswordModal = false;
+                    } else {
+                        this.passwordError = '비밀번호가 올바르지 않습니다.';
                     }
                 },
 
@@ -330,19 +474,19 @@
                         }));
                         this.loading = false;
                     }, (error) => {
-                        console.error("Firestore 수신 오류:", error);
+                        console.error("Firestore 데이터 수신 오류:", error);
                         this.loading = false;
                     });
                 },
 
                 async submitNewNotice() {
                     if (!this.formNotice.title || !this.formNotice.content) {
-                        alert('제목과 내용을 입력해 주세요.');
+                        alert('제목과 내용을 모두 입력해 주세요.');
                         return;
                     }
 
                     const today = new Date();
-                    const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+                    const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')} ${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
 
                     try {
                         await addDoc(collection(db, "notices"), {
@@ -350,9 +494,11 @@
                             title: this.formNotice.title,
                             content: this.formNotice.content,
                             item_features: this.formNotice.roomId === 'lost' ? this.formNotice.itemFeatures : '',
-                            category: this.formNotice.category,
-                            author: this.user ? this.user.displayName : (this.isTeacher ? '교직원' : '학생'),
+                            is_important: this.isTeacher && this.formNotice.isImportant,
+                            author: this.user ? this.user.displayName : '사용자',
                             author_email: this.user ? this.user.email : '',
+                            author_uid: this.user ? this.user.uid : '',
+                            author_role: this.isTeacher ? 'teacher' : 'student',
                             date: dateStr,
                             created_at: serverTimestamp()
                         });
@@ -361,9 +507,29 @@
                         this.formNotice.title = '';
                         this.formNotice.content = '';
                         this.formNotice.itemFeatures = '';
+                        this.formNotice.isImportant = false;
                     } catch (error) {
                         console.error("공지 등록 실패:", error);
                         alert("글 등록 실패: " + error.message);
+                    }
+                },
+
+                canDelete(notice) {
+                    if (!this.user) return false;
+                    // 교직원은 모든 글 삭제 가능
+                    if (this.isTeacher) return true;
+                    // 학생은 본인의 UID 혹은 이메일이 일치하는 글만 삭제 가능
+                    return (notice.author_uid === this.user.uid) || (notice.author_email === this.user.email);
+                },
+
+                async deleteNotice(id) {
+                    if (!confirm("이 공지사항을 정말로 삭제하시겠습니까?")) return;
+
+                    try {
+                        await deleteDoc(doc(db, "notices", id));
+                    } catch (error) {
+                        console.error("게시글 삭제 실패:", error);
+                        alert("삭제에 실패하였습니다: " + error.message);
                     }
                 },
 

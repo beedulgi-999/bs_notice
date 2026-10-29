@@ -51,11 +51,29 @@
                 </div>
             </div>
 
+            <!-- 카테고리 선택 탭 -->
+            <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                <button class="category-btn active bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap" data-category="ALL">전체</button>
+                <button class="category-btn bg-white text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap" data-category="1학년">1학년</button>
+                <button class="category-btn bg-white text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap" data-category="2학년">2학년</button>
+                <button class="category-btn bg-white text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap" data-category="3학년">3학년</button>
+                <button class="category-btn bg-white text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap" data-category="분실물">분실물</button>
+            </div>
+
             <!-- 공지사항 작성 폼 -->
             <div id="notice-form-card" class="bg-white p-5 rounded-xl shadow-sm space-y-3">
-                <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">
-                    <i class="fa-solid fa-pen-to-square text-indigo-600"></i> 새 공지사항 작성
-                </h3>
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-pen-to-square text-indigo-600"></i> 새 공지사항 작성
+                    </h3>
+                    <!-- 글 작성 카테고리 선택 -->
+                    <select id="notice-category-select" class="border rounded-lg text-xs p-1.5 bg-slate-50 focus:ring-2 focus:ring-indigo-500">
+                        <option value="1학년">1학년</option>
+                        <option value="2학년">2학년</option>
+                        <option value="3학년">3학년</option>
+                        <option value="분실물">분실물</option>
+                    </select>
+                </div>
                 <input type="text" id="notice-title" placeholder="제목을 입력하세요" class="w-full p-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <textarea id="notice-content" rows="3" placeholder="내용을 작성하세요" class="w-full p-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                 
@@ -82,265 +100,4 @@
     </main>
 
     <!-- 교직원 비밀번호 인증 모달 -->
-    <div id="pin-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full space-y-4">
-            <h3 class="font-bold text-slate-800 text-lg">교직원 인증</h3>
-            <p class="text-xs text-slate-500">교직원 모드로 전환하려면 비밀번호 4자리를 입력하세요.</p>
-            <input type="password" id="pin-input" maxlength="4" placeholder="비밀번호 입력" class="w-full text-center tracking-widest text-2xl p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <div class="flex gap-2">
-                <button id="btn-pin-cancel" class="w-1/2 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold">취소</button>
-                <button id="btn-pin-submit" class="w-1/2 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold">확인</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Firebase SDK 및 스크립트 -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCJPuGeyVJ7AdZvfIhCwM_MCFsl7Dnp35c",
-            authDomain: "bs-nt-af44b.firebaseapp.com",
-            projectId: "bs-nt-af44b",
-            storageBucket: "bs-nt-af44b.appspot.com",
-            messagingSenderId: "1083944634289",
-            appId: "1:1083944634289:web:355ba48dc4ee9f090b8332"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
-
-        let currentUser = null;
-        let isStaff = false;
-        let allNotices = [];
-        let isLoggingIn = false; // 중복 로그인 방지 플래그
-
-        const loginNotice = document.getElementById('login-notice');
-        const mainContent = document.getElementById('main-content');
-        const authSection = document.getElementById('auth-section');
-        const roleBadge = document.getElementById('role-badge');
-        const btnSwitchRole = document.getElementById('btn-switch-role');
-        const staffOptions = document.getElementById('staff-options');
-        const pinModal = document.getElementById('pin-modal');
-        const searchInput = document.getElementById('search-input');
-        const btnLogin = document.getElementById('btn-login');
-
-        // 안전한 구글 팝업 로그인
-        btnLogin.addEventListener('click', async () => {
-            if (isLoggingIn) return;
-            isLoggingIn = true;
-            btnLogin.disabled = true;
-            btnLogin.opacity = "0.6";
-
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (err) {
-                if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-                    alert("로그인 중 에러가 발생했습니다: " + err.message);
-                }
-            } finally {
-                isLoggingIn = false;
-                btnLogin.disabled = false;
-                btnLogin.opacity = "1";
-            }
-        });
-
-        // 인증 상태 변경 감지
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                if (!user.email.endsWith('@buseol.kr')) {
-                    alert("부설고 학교 계정(@buseol.kr)으로만 접속할 수 있습니다.");
-                    signOut(auth);
-                    return;
-                }
-                currentUser = user;
-                showLoggedInUI();
-                loadNotices();
-            } else {
-                currentUser = null;
-                showLoggedOutUI();
-            }
-        });
-
-        function showLoggedInUI() {
-            loginNotice.classList.add('hidden');
-            mainContent.classList.remove('hidden');
-            authSection.innerHTML = `
-                <span class="text-xs font-medium mr-1 hidden sm:inline">${currentUser.displayName}님</span>
-                <button id="btn-logout" class="text-xs bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded-lg transition">로그아웃</button>
-            `;
-            document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
-            document.getElementById('form-author-info').textContent = `작성자: ${currentUser.displayName}`;
-        }
-
-        function showLoggedOutUI() {
-            loginNotice.classList.remove('hidden');
-            mainContent.classList.add('hidden');
-            authSection.innerHTML = '';
-        }
-
-        // 비밀번호(6939) 교직원 인증
-        btnSwitchRole.addEventListener('click', () => {
-            if (isStaff) {
-                isStaff = false;
-                updateRoleUI();
-            } else {
-                pinModal.classList.remove('hidden');
-                document.getElementById('pin-input').focus();
-            }
-        });
-
-        document.getElementById('btn-pin-cancel').addEventListener('click', () => {
-            pinModal.classList.add('hidden');
-            document.getElementById('pin-input').value = '';
-        });
-
-        document.getElementById('btn-pin-submit').addEventListener('click', checkPin);
-        document.getElementById('pin-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') checkPin();
-        });
-
-        function checkPin() {
-            const pin = document.getElementById('pin-input').value;
-            if (pin === '6939') {
-                isStaff = true;
-                pinModal.classList.add('hidden');
-                document.getElementById('pin-input').value = '';
-                updateRoleUI();
-            } else {
-                alert('비밀번호가 올바르지 않습니다.');
-                document.getElementById('pin-input').value = '';
-            }
-        }
-
-        function updateRoleUI() {
-            if (isStaff) {
-                roleBadge.textContent = '교직원 모드';
-                roleBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700';
-                btnSwitchRole.textContent = '학생 모드로 변경';
-                staffOptions.classList.remove('hidden');
-            } else {
-                roleBadge.textContent = '학생 모드';
-                roleBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700';
-                btnSwitchRole.textContent = '교직원 모드로 변경';
-                staffOptions.classList.add('hidden');
-            }
-            renderNotices();
-        }
-
-        // 공지 등록
-        document.getElementById('btn-submit').addEventListener('click', async () => {
-            const title = document.getElementById('notice-title').value.trim();
-            const content = document.getElementById('notice-content').value.trim();
-            const isImportant = isStaff && document.getElementById('is-important').checked;
-
-            if (!title || !content) {
-                alert('제목과 내용을 모두 입력해주세요.');
-                return;
-            }
-
-            try {
-                await addDoc(collection(db, 'notices'), {
-                    title,
-                    content,
-                    authorName: currentUser.displayName,
-                    authorUid: currentUser.uid,
-                    authorRole: isStaff ? '교직원' : '학생',
-                    isImportant,
-                    createdAt: serverTimestamp()
-                });
-                document.getElementById('notice-title').value = '';
-                document.getElementById('notice-content').value = '';
-                if (document.getElementById('is-important')) document.getElementById('is-important').checked = false;
-            } catch (err) {
-                alert('공지 등록 실패: ' + err.message);
-            }
-        });
-
-        // 실시간 로딩
-        function loadNotices() {
-            const q = query(collection(db, 'notices'), orderBy('createdAt', 'desc'));
-            onSnapshot(q, (snapshot) => {
-                allNotices = [];
-                snapshot.forEach((doc) => {
-                    allNotices.push({ id: doc.id, ...doc.data() });
-                });
-                renderNotices();
-            });
-        }
-
-        searchInput.addEventListener('input', renderNotices);
-
-        function renderNotices() {
-            const noticeList = document.getElementById('notice-list');
-            const keyword = searchInput.value.toLowerCase().trim();
-
-            noticeList.innerHTML = '';
-
-            const filtered = allNotices.filter(item => 
-                item.title?.toLowerCase().includes(keyword) ||
-                item.content?.toLowerCase().includes(keyword) ||
-                item.authorName?.toLowerCase().includes(keyword)
-            );
-
-            if (filtered.length === 0) {
-                noticeList.innerHTML = '<div class="text-center py-8 text-slate-400 text-sm">등록된 공지사항이 없거나 검색 결과가 없습니다.</div>';
-                return;
-            }
-
-            filtered.forEach(item => {
-                const isMyPost = currentUser && item.authorUid === currentUser.uid;
-                const canDelete = isStaff || isMyPost;
-
-                let dateStr = '방금 전';
-                if (item.createdAt) {
-                    const date = item.createdAt.toDate();
-                    dateStr = date.toLocaleDateString('ko-KR', {
-                        year: 'numeric', month: '2-digit', day: '2-digit',
-                        hour: '2-digit', minute: '2-digit'
-                    });
-                }
-
-                const card = document.createElement('div');
-                card.className = `bg-white p-5 rounded-xl shadow-sm border-l-4 ${item.isImportant ? 'border-red-500 bg-red-50/30' : 'border-indigo-500'} space-y-2 relative`;
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="space-y-1">
-                            <div class="flex items-center gap-2">
-                                ${item.isImportant ? '<span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">필독</span>' : ''}
-                                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${item.authorRole === '교직원' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">
-                                    ${item.authorRole || '학생'}
-                                </span>
-                                <h4 class="font-bold text-slate-800 text-base">${item.title}</h4>
-                            </div>
-                            <div class="text-xs text-slate-400 flex items-center gap-2">
-                                <span><i class="fa-regular fa-user"></i> ${item.authorName}</span>
-                                <span>•</span>
-                                <span><i class="fa-regular fa-clock"></i> ${dateStr}</span>
-                            </div>
-                        </div>
-                        ${canDelete ? `<button class="btn-delete text-slate-400 hover:text-red-500 p-1 text-sm transition" data-id="${item.id}"><i class="fa-solid fa-trash-can"></i></button>` : ''}
-                    </div>
-                    <p class="text-slate-600 text-sm whitespace-pre-wrap pt-1">${item.content}</p>
-                `;
-
-                noticeList.appendChild(card);
-            });
-
-            document.querySelectorAll('.btn-delete').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.dataset.id;
-                    if (confirm('정말 이 공지글을 삭제하시겠습니까?')) {
-                        await deleteDoc(doc(db, 'notices', id));
-                    }
-                });
-            });
-        }
-    </script>
-</body>
-</html>
+    <div id
